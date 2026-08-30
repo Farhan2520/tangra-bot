@@ -347,7 +347,15 @@ app.get('/api/my-orders', (req, res) => {
 // Plain-web order placement — for customers who scan the QR code and don't
 // have Telegram at all. Same validation/pricing logic as the bot path.
 app.post('/api/orders', async (req, res) => {
-  const result = buildOrderFromPayload(req.body || {}, { source: 'web' });
+  // The Mini App can be opened from Telegram's Menu Button as well as the
+  // reply keyboard. tg.sendData() is not reliable/available for every launch
+  // method, so orders are submitted through this HTTP endpoint instead.
+  const body = req.body || {};
+  const result = buildOrderFromPayload(body, {
+    telegramUserId: body.telegramUserId || null,
+    telegramUsername: body.telegramUsername || null,
+    source: body.source || 'web',
+  });
   if (result.error) return res.status(400).json({ error: result.error });
 
   const order = saveOrder(result.order);
@@ -355,7 +363,8 @@ app.post('/api/orders', async (req, res) => {
 
   if (OWNER_CHAT_ID) {
     try {
-      await bot.telegram.sendMessage(OWNER_CHAT_ID, `🔔 Naya Order! (Web/QR)\n\n${formatOrderText(order)}`);
+      const label = order.source === 'telegram' ? 'Telegram' : 'Web/QR';
+      await bot.telegram.sendMessage(OWNER_CHAT_ID, `🔔 Naya Order! (${label})\n\n${formatOrderText(order)}`);
     } catch (err) {
       console.error('Owner ko notify karne mein error:', err.message);
     }
