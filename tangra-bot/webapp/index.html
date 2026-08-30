@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Tangra Square — Order</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Cinzel+Decorative:wght@700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-seal">唐</span>
+    <div class="brand-text">
+      <h1>Tangra Square</h1>
+      <p>Authentic Chinese Cuisine · Est. 1998</p>
+    </div>
+  </div>
+  <div class="search-wrap">
+    <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="11" cy="11" r="7"></circle>
+      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+    </svg>
+    <input type="text" id="searchInput" placeholder="Search dishes…" autocomplete="off" />
+  </div>
+</header>
+
+<nav class="cat-tabs" id="catTabs">
+  <div class="cat-tabs-indicator" id="catIndicator"></div>
+</nav>
+
+<main id="menuList" class="menu-list">
+  <div class="skeleton-wrap" id="skeletonWrap">
+    <div class="skeleton-header"></div>
+    <div class="skeleton-card"></div>
+    <div class="skeleton-card"></div>
+    <div class="skeleton-card"></div>
+  </div>
+</main>
+
+<div class="no-results" id="noResults" hidden>
+  <span>🔍</span>
+  <p>Koi dish nahi mili. Kuch aur try karo.</p>
+</div>
+
+<button class="cart-bar" id="cartBar" hidden>
+  <span class="cart-bar-count" id="cartCount">0 items</span>
+  <span class="cart-bar-cta">View Cart <strong id="cartTotal">₹0</strong></span>
+</button>
+
+<div class="drawer-overlay" id="drawerOverlay" hidden>
+  <div class="drawer" id="drawer">
+    <div class="drawer-handle"></div>
+    <h2>Your Order</h2>
+    <div id="cartItems" class="cart-items"></div>
+
+    <div class="cart-total-row">
+      <span>Total</span>
+      <strong id="drawerTotal">₹0</strong>
+    </div>
+
+    <form id="checkoutForm" class="checkout-form">
+      <label>
+        Name
+        <input type="text" id="custName" placeholder="Your name" required />
+      </label>
+      <label>
+        Phone
+        <input type="tel" id="custPhone" placeholder="10-digit mobile number" required pattern="[0-9]{10}" />
+      </label>
+      <label>
+        Order type
+        <div class="segmented" id="orderTypeSeg">
+          <button type="button" class="seg-btn selected" data-value="Dine-in">Dine-in</button>
+          <button type="button" class="seg-btn" data-value="Takeaway">Takeaway</button>
+          <button type="button" class="seg-btn" data-value="Delivery">Delivery</button>
+        </div>
+        <input type="hidden" id="custOrderType" value="Dine-in" />
+      </label>
+      <label id="addressField">
+        Delivery address
+        <textarea id="custAddress" placeholder="Full address"></textarea>
+      </label>
+      <label>
+        Notes (optional)
+        <textarea id="custNotes" placeholder="e.g. less spicy, no onion"></textarea>
+      </label>
+
+      <button type="submit" class="place-order-btn">
+        <span>Place Order</span>
+        <strong id="submitTotal">₹0</strong>
+      </button>
+    </form>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
