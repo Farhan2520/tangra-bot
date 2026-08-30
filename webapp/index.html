@@ -12,11 +12,17 @@
 <body>
 
 <header class="topbar">
-  <div class="brand">
-    <span class="brand-seal">🥡</span>
-    <div class="brand-text">
-      <h1>Tangra Square</h1>
-      <p>Authentic Chinese Cuisine · Est. 1998</p>
+  <div class="brand-row">
+    <div class="brand">
+      <span class="brand-seal">🥡</span>
+      <div class="brand-text">
+        <h1>Tangra Square</h1>
+        <p>Authentic Chinese Cuisine · Est. 1998</p>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <button type="button" class="icon-btn" id="myOrdersBtn" title="My Orders">📋</button>
+      <button type="button" class="icon-btn" id="helpBtn" title="Help">❓</button>
     </div>
   </div>
   <div class="search-wrap">
@@ -51,6 +57,7 @@
   <span class="cart-bar-cta">View Cart <strong id="cartTotal">₹0</strong></span>
 </button>
 
+<!-- Cart / checkout drawer -->
 <div class="drawer-overlay" id="drawerOverlay" hidden>
   <div class="drawer" id="drawer">
     <div class="drawer-handle"></div>
@@ -70,19 +77,20 @@
       <label>
         Phone
         <input type="tel" id="custPhone" placeholder="10-digit mobile number" required pattern="[0-9]{10}" />
+        <span class="verified-note" id="verifiedNote" hidden>✅ Telegram-verified number</span>
       </label>
       <label>
         Order type
         <div class="segmented" id="orderTypeSeg">
           <button type="button" class="seg-btn selected" data-value="Dine-in">Dine-in</button>
           <button type="button" class="seg-btn" data-value="Takeaway">Takeaway</button>
-          <button type="button" class="seg-btn" data-value="Delivery">Delivery</button>
+          <button type="button" class="seg-btn" data-value="Delivery" id="deliverySegBtn" hidden>Delivery</button>
         </div>
         <input type="hidden" id="custOrderType" value="Dine-in" />
       </label>
-      <label id="addressField">
+      <label id="addressField" hidden>
         Delivery address
-        <textarea id="custAddress" placeholder="Full address"></textarea>
+        <textarea id="custAddress" placeholder="Full address with landmark"></textarea>
       </label>
       <label>
         Notes (optional)
@@ -94,6 +102,48 @@
         <strong id="submitTotal">₹0</strong>
       </button>
     </form>
+  </div>
+</div>
+
+<!-- My Orders panel -->
+<div class="drawer-overlay" id="ordersOverlay" hidden>
+  <div class="drawer" id="ordersDrawer">
+    <div class="drawer-handle"></div>
+    <h2>My Orders</h2>
+
+    <div id="ordersLookup" class="orders-lookup" hidden>
+      <p class="orders-lookup-hint">Apna order dekhne ke liye wahi phone number daalo jo order karte waqt use kiya tha.</p>
+      <div class="orders-lookup-row">
+        <input type="tel" id="lookupPhone" placeholder="10-digit mobile number" pattern="[0-9]{10}" />
+        <button type="button" id="lookupBtn">Dekho</button>
+      </div>
+    </div>
+
+    <div id="ordersList" class="orders-list-panel">
+      <p class="orders-empty">Loading…</p>
+    </div>
+  </div>
+</div>
+
+<!-- Help panel -->
+<div class="drawer-overlay" id="helpOverlay" hidden>
+  <div class="drawer drawer-small" id="helpDrawer">
+    <div class="drawer-handle"></div>
+    <h2>Help</h2>
+    <p id="helpMessageText" class="help-text"></p>
+    <a id="helpCallBtn" class="help-action-btn" href="#">📞 Call Now</a>
+    <a id="helpWhatsappBtn" class="help-action-btn whatsapp" href="#" target="_blank" rel="noopener">💬 WhatsApp</a>
+    <p class="help-empty" id="helpEmpty" hidden>Abhi help number set nahi hai.</p>
+  </div>
+</div>
+
+<!-- Plain-web (no Telegram / QR) order confirmation -->
+<div class="drawer-overlay" id="webConfirmOverlay" hidden>
+  <div class="drawer drawer-small" id="webConfirmDrawer">
+    <div class="drawer-handle"></div>
+    <h2>✅ Order Confirmed</h2>
+    <pre id="webConfirmText" class="web-confirm-text"></pre>
+    <button type="button" class="place-order-btn" id="webConfirmCloseBtn"><span>Theek Hai</span></button>
   </div>
 </div>
 
