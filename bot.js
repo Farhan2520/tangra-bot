@@ -29,9 +29,21 @@ const VALID_STATUSES = ['New', 'Preparing', 'Ready', 'Delivered', 'Cancelled'];
 
 const MENU_PATH = path.join(__dirname, 'data', 'menu.json');
 const ORDERS_PATH = path.join(__dirname, 'data', 'orders.json');
+const CONTACTS_PATH = path.join(__dirname, 'data', 'contacts.json');
+const SETTINGS_PATH = path.join(__dirname, 'data', 'settings.json');
+
+const DEFAULT_SETTINGS = {
+  deliveryEnabled: false,
+  helpPhone: '',
+  helpMessage: 'Kisi bhi order ya query ke liye call/WhatsApp karo.',
+};
 
 function loadMenu() {
   return JSON.parse(fs.readFileSync(MENU_PATH, 'utf8'));
+}
+
+function saveMenu(menu) {
+  fs.writeFileSync(MENU_PATH, JSON.stringify(menu, null, 2));
 }
 
 function loadOrders() {
@@ -43,10 +55,42 @@ function loadOrders() {
   }
 }
 
+function loadContacts() {
+  if (!fs.existsSync(CONTACTS_PATH)) return {};
+  try {
+    return JSON.parse(fs.readFileSync(CONTACTS_PATH, 'utf8'));
+  } catch {
+    return {};
+  }
+}
+
+function loadSettings() {
+  if (!fs.existsSync(SETTINGS_PATH)) return { ...DEFAULT_SETTINGS };
+  try {
+    return { ...DEFAULT_SETTINGS, ...JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf8')) };
+  } catch {
+    return { ...DEFAULT_SETTINGS };
+  }
+}
+
+function saveSettings(settings) {
+  fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2));
+}
+
+// Telegram's "request_contact" keyboard button only ever lets a user share
+// their OWN account's phone number — Telegram enforces this, so once we
+// receive it here it's a verified number, not something the user typed in.
+function saveVerifiedContact(telegramUserId, phone) {
+  const contacts = loadContacts();
+  contacts[telegramUserId] = { phone, verifiedAt: new Date().toISOString() };
+  fs.writeFileSync(CONTACTS_PATH, JSON.stringify(contacts, null, 2));
+}
+
 function saveOrder(order) {
   const orders = loadOrders();
   orders.push(order);
   fs.writeFileSync(ORDERS_PATH, JSON.stringify(orders, null, 2));
+  return order;
 }
 
 function updateOrderStatus(orderId, status) {
@@ -101,10 +145,13 @@ function formatOrderText(order) {
     const sizeLabel = it.size ? ` (${it.size})` : '';
     return `• ${it.name}${sizeLabel} × ${it.qty} — ₹${it.lineTotal}`;
   });
+  const verifiedTag = order.customer.phoneVerified ? ' ✅' : '';
+  const sourceTag = order.source === 'web' ? ' 🌐' : '';
   return [
-    `🧾 Order #${order.orderId}`,
-    `👤 ${order.customer.name || 'N/A'}  📞 ${order.customer.phone || 'N/A'}`,
-    `🚚 ${order.customer.orderType || 'N/A'}${order.customer.address ? ' — ' + order.customer.address : ''}`,
+    `🧾 Order #${order.orderId}${sourceTag}`,
+    `👤 ${order.customer.name || 'N/A'}  📞 ${order.customer.phone || 'N/A'}${verifiedTag}`,
+    `🍽️ ${order.customer.orderType || 'N/A'}`,
+    order.customer.address ? `📍 ${order.customer.address}` : null,
     order.customer.notes ? `📝 ${order.customer.notes}` : null,
     '',
     ...lines,
@@ -115,33 +162,111 @@ function formatOrderText(order) {
     .join('\n');
 }
 
+// Shared order-building logic used by both the Telegram web_app_data handler
+// and the plain-web /api/orders endpoint (for QR/no-Telegram customers).
+function buildOrderFromPayload(payload, { telegramUserId, telegramUsername, source }) {
+  const menu = loadMenu();
+  const itemIndex = buildItemIndex(menu);
+
+  if (!Array.isArray(payload.cart) || payload.cart.length === 0) {
+    return { error: 'Cart khali hai, kuch items add karke dobara try karo.' };
+  }
+
+  const items = [];
+  let total = 0;
+  for (const line of payload.cart) {
+    const item = itemIndex[line.id];
+    if (!item || item.available === false) continue; // unknown/unavailable id, skip silently
+    const qty = Math.max(1, parseInt(line.qty, 10) || 1);
+    const unit = priceFor(item, line.size);
+    const lineTotal = unit * qty;
+    total += lineTotal;
+    items.push({ id: item.id, name: item.name, size: line.size || null, qty, unit, lineTotal });
+  }
+
+  if (items.length === 0) {
+    return { error: 'Order mein koi valid item nahi mila, dobara try karo.' };
+  }
+
+  const contacts = loadContacts();
+  const verified = telegramUserId ? contacts[telegramUserId] : null;
+  const phone = verified?.phone || payload.customer?.phone || '';
+
+  const order = {
+    orderId: Date.now().toString(36).toUpperCase(),
+    createdAt: new Date().toISOString(),
+    source: source || 'telegram',
+    telegramUserId: telegramUserId || null,
+    telegramUsername: telegramUsername || null,
+    customer: {
+      name: payload.customer?.name || '',
+      phone,
+      phoneVerified: !!verified,
+      orderType: payload.customer?.orderType || '',
+      address: payload.customer?.address || '',
+      notes: payload.customer?.notes || '',
+    },
+    items,
+    total,
+    status: 'New',
+  };
+
+  return { order };
+}
+
 const bot = new Telegraf(BOT_TOKEN);
 
 bot.start((ctx) => {
   const webAppUrl = PUBLIC_URL ? `${PUBLIC_URL}/webapp` : null;
   const menu = loadMenu();
+  const contacts = loadContacts();
+  const isVerified = !!contacts[ctx.from.id];
 
   const introText =
     `🥡 *${menu.restaurant.name}*\n` +
     `${menu.restaurant.tagline}\n\n` +
-    `Order karne ke liye niche button dabao 👇`;
+    (isVerified
+      ? `Order karne ke liye niche button dabao 👇`
+      : `Order karne se pehle apna number verify kar lo (ek baar), fir order karo 👇`);
 
-  if (webAppUrl) {
-    return ctx.replyWithMarkdown(
-      introText,
-      Markup.keyboard([Markup.button.webApp('🍜 Order Now', webAppUrl)]).resize()
-    );
+  const rows = [];
+  if (webAppUrl) rows.push([Markup.button.webApp('🍜 Order Now', webAppUrl)]);
+  if (!isVerified) rows.push([Markup.button.contactRequest('📱 Share & Verify My Number')]);
+
+  if (rows.length === 0) {
+    return ctx.replyWithMarkdown(introText + '\n\n⚠️ Web App abhi configure nahi hui (PUBLIC_URL missing).');
   }
-  return ctx.replyWithMarkdown(
-    introText + '\n\n⚠️ Web App abhi configure nahi hui (PUBLIC_URL missing).'
-  );
+  return ctx.replyWithMarkdown(introText, Markup.keyboard(rows).resize());
 });
 
 bot.help((ctx) => {
+  const settings = loadSettings();
+  const helpLine = settings.helpPhone
+    ? `\n\n📞 Help/Contact: ${settings.helpPhone}${settings.helpMessage ? ` — ${settings.helpMessage}` : ''}`
+    : '';
   ctx.reply(
-    'Order karne ke liye /start bhejo aur "Order Now" button dabao.\n' +
-      'Koi dikkat ho to seedha yahan message karo, hum dekh lenge.'
+    'Order karne ke liye /start bhejo, apna number verify karo (ek baar), aur "Order Now" button dabao.\n' +
+      'Apne purane orders "My Orders" section mein (Order Now ke andar) dekh sakte ho.' +
+      helpLine
   );
+});
+
+// Telegram guarantees this contact belongs to the sender's own account.
+bot.on('message', async (ctx, next) => {
+  if (ctx.message?.contact) {
+    const contact = ctx.message.contact;
+    if (contact.user_id && contact.user_id !== ctx.from.id) {
+      return ctx.reply('⚠️ Sirf apna khud ka number share kar sakte ho.');
+    }
+    saveVerifiedContact(ctx.from.id, contact.phone_number);
+    return ctx.reply(
+      `✅ Number verify ho gaya: ${contact.phone_number}\n\nAb "Order Now" dabao aur order karo.`,
+      Markup.keyboard([
+        Markup.button.webApp('🍜 Order Now', PUBLIC_URL ? `${PUBLIC_URL}/webapp` : '#'),
+      ]).resize()
+    );
+  }
+  return next();
 });
 
 // Handle data sent back from the Mini App when customer taps "Place Order"
@@ -153,48 +278,16 @@ bot.on('web_app_data', async (ctx) => {
     return ctx.reply('⚠️ Order padhne mein dikkat aayi, dobara try karo.');
   }
 
-  const menu = loadMenu();
-  const itemIndex = buildItemIndex(menu);
-
-  if (!Array.isArray(payload.cart) || payload.cart.length === 0) {
-    return ctx.reply('⚠️ Cart khali hai, kuch items add karke dobara try karo.');
-  }
-
-  // Recompute every line item and the total from menu.json — never trust the
-  // client's numbers directly, in case of tampering or stale prices.
-  const items = [];
-  let total = 0;
-  for (const line of payload.cart) {
-    const item = itemIndex[line.id];
-    if (!item) continue; // unknown id, skip silently
-    const qty = Math.max(1, parseInt(line.qty, 10) || 1);
-    const unit = priceFor(item, line.size);
-    const lineTotal = unit * qty;
-    total += lineTotal;
-    items.push({ id: item.id, name: item.name, size: line.size || null, qty, unit, lineTotal });
-  }
-
-  if (items.length === 0) {
-    return ctx.reply('⚠️ Order mein koi valid item nahi mila, dobara try karo.');
-  }
-
-  const order = {
-    orderId: Date.now().toString(36).toUpperCase(),
-    createdAt: new Date().toISOString(),
+  const result = buildOrderFromPayload(payload, {
     telegramUserId: ctx.from.id,
     telegramUsername: ctx.from.username || null,
-    customer: {
-      name: payload.customer?.name || ctx.from.first_name || '',
-      phone: payload.customer?.phone || '',
-      orderType: payload.customer?.orderType || '',
-      address: payload.customer?.address || '',
-      notes: payload.customer?.notes || '',
-    },
-    items,
-    total,
-    status: 'New',
-  };
+    source: 'telegram',
+  });
 
+  if (result.error) return ctx.reply(`⚠️ ${result.error}`);
+
+  const order = result.order;
+  if (!order.customer.name) order.customer.name = ctx.from.first_name || '';
   saveOrder(order);
 
   const summaryText = formatOrderText(order);
@@ -225,6 +318,50 @@ app.get('/api/menu', (req, res) => {
   res.json(loadMenu());
 });
 
+app.get('/api/settings', (req, res) => {
+  const { deliveryEnabled, helpPhone, helpMessage } = loadSettings();
+  res.json({ deliveryEnabled, helpPhone, helpMessage });
+});
+
+app.get('/api/verified-phone/:tgUserId', (req, res) => {
+  const contacts = loadContacts();
+  const entry = contacts[req.params.tgUserId];
+  res.json(entry ? { phone: entry.phone } : { phone: null });
+});
+
+// "My Orders" — Telegram users lookup by their tgUserId, QR/web users (no
+// Telegram) lookup by the phone number they used at checkout.
+app.get('/api/my-orders', (req, res) => {
+  const { tgUserId, phone } = req.query;
+  const orders = loadOrders();
+  let mine = [];
+  if (tgUserId) {
+    mine = orders.filter((o) => String(o.telegramUserId) === String(tgUserId));
+  } else if (phone) {
+    const cleanPhone = String(phone).replace(/\D/g, '');
+    mine = orders.filter((o) => (o.customer.phone || '').replace(/\D/g, '') === cleanPhone);
+  }
+  res.json(mine.slice().reverse());
+});
+
+// Plain-web order placement — for customers who scan the QR code and don't
+// have Telegram at all. Same validation/pricing logic as the bot path.
+app.post('/api/orders', async (req, res) => {
+  const result = buildOrderFromPayload(req.body || {}, { source: 'web' });
+  if (result.error) return res.status(400).json({ error: result.error });
+
+  const order = saveOrder(result.order);
+  res.json({ ok: true, order, summary: formatOrderText(order) });
+
+  if (OWNER_CHAT_ID) {
+    try {
+      await bot.telegram.sendMessage(OWNER_CHAT_ID, `🔔 Naya Order! (Web/QR)\n\n${formatOrderText(order)}`);
+    } catch (err) {
+      console.error('Owner ko notify karne mein error:', err.message);
+    }
+  }
+});
+
 // --- Admin dashboard (password-protected) ---
 app.use('/admin', basicAuth, express.static(path.join(__dirname, 'admin')));
 
@@ -244,22 +381,132 @@ app.post('/api/admin/orders/:orderId/status', basicAuth, async (req, res) => {
   const order = updateOrderStatus(orderId, status);
   if (!order) return res.status(404).json({ error: 'Order not found' });
 
-  // Best-effort: let the customer know their order status changed.
-  try {
-    await bot.telegram.sendMessage(
-      order.telegramUserId,
-      `📦 Order #${order.orderId} update: *${status}*`,
-      { parse_mode: 'Markdown' }
-    );
-  } catch (err) {
-    console.error('Customer ko status update bhejne mein error:', err.message);
+  // Best-effort: let the customer know their order status changed (only
+  // possible for Telegram orders — web/QR orders have no chat to message).
+  if (order.telegramUserId) {
+    try {
+      await bot.telegram.sendMessage(
+        order.telegramUserId,
+        `📦 Order #${order.orderId} update: *${status}*`,
+        { parse_mode: 'Markdown' }
+      );
+    } catch (err) {
+      console.error('Customer ko status update bhejne mein error:', err.message);
+    }
   }
 
   res.json({ ok: true, order });
 });
 
+// --- Admin: menu management (add/edit/delete items, toggle availability) ---
+app.get('/api/admin/menu', basicAuth, (req, res) => {
+  res.json(loadMenu());
+});
+
+app.post('/api/admin/menu/category', basicAuth, (req, res) => {
+  const { name, priceType } = req.body || {};
+  if (!name) return res.status(400).json({ error: 'Category name chahiye.' });
+
+  const menu = loadMenu();
+  const id = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || `cat${Date.now()}`;
+  if (menu.categories.some((c) => c.id === id)) {
+    return res.status(400).json({ error: 'Is naam ki category pehle se hai.' });
+  }
+  menu.categories.push({ id, name, priceType: priceType || 'single', items: [] });
+  saveMenu(menu);
+  res.json({ ok: true, menu });
+});
+
+app.delete('/api/admin/menu/category/:categoryId', basicAuth, (req, res) => {
+  const menu = loadMenu();
+  const before = menu.categories.length;
+  menu.categories = menu.categories.filter((c) => c.id !== req.params.categoryId);
+  if (menu.categories.length === before) return res.status(404).json({ error: 'Category nahi mili.' });
+  saveMenu(menu);
+  res.json({ ok: true, menu });
+});
+
+// Add a new item, or update an existing one if item.id matches one already
+// present in that category.
+app.post('/api/admin/menu/item', basicAuth, (req, res) => {
+  const { categoryId, item } = req.body || {};
+  if (!categoryId || !item || !item.name) {
+    return res.status(400).json({ error: 'categoryId aur item.name chahiye.' });
+  }
+
+  const menu = loadMenu();
+  const cat = menu.categories.find((c) => c.id === categoryId);
+  if (!cat) return res.status(404).json({ error: 'Category nahi mili.' });
+
+  const hasHalfFull = typeof item.half === 'number' && typeof item.full === 'number';
+  const cleanItem = {
+    name: item.name,
+    dietType: item.dietType || null,
+    available: item.available !== false,
+  };
+  if (hasHalfFull) {
+    cleanItem.half = item.half;
+    cleanItem.full = item.full;
+  } else {
+    cleanItem.price = typeof item.price === 'number' ? item.price : 0;
+  }
+  if (item.note) cleanItem.note = item.note;
+
+  if (item.id) {
+    const existing = cat.items.find((it) => it.id === item.id);
+    if (existing) {
+      Object.assign(existing, cleanItem);
+      saveMenu(menu);
+      return res.json({ ok: true, menu });
+    }
+  }
+
+  const newId = item.id || `${categoryId.slice(0, 2)}${Date.now().toString(36)}`;
+  cat.items.push({ id: newId, ...cleanItem });
+  saveMenu(menu);
+  res.json({ ok: true, menu });
+});
+
+app.delete('/api/admin/menu/item/:categoryId/:itemId', basicAuth, (req, res) => {
+  const menu = loadMenu();
+  const cat = menu.categories.find((c) => c.id === req.params.categoryId);
+  if (!cat) return res.status(404).json({ error: 'Category nahi mili.' });
+  const before = cat.items.length;
+  cat.items = cat.items.filter((it) => it.id !== req.params.itemId);
+  if (cat.items.length === before) return res.status(404).json({ error: 'Item nahi mila.' });
+  saveMenu(menu);
+  res.json({ ok: true, menu });
+});
+
+app.post('/api/admin/menu/item/:categoryId/:itemId/toggle', basicAuth, (req, res) => {
+  const menu = loadMenu();
+  const cat = menu.categories.find((c) => c.id === req.params.categoryId);
+  const item = cat?.items.find((it) => it.id === req.params.itemId);
+  if (!item) return res.status(404).json({ error: 'Item nahi mila.' });
+  item.available = !item.available;
+  saveMenu(menu);
+  res.json({ ok: true, menu });
+});
+
+// --- Admin: settings (home delivery toggle, help contact number) ---
+app.get('/api/admin/settings', basicAuth, (req, res) => {
+  res.json(loadSettings());
+});
+
+app.post('/api/admin/settings', basicAuth, (req, res) => {
+  const current = loadSettings();
+  const { deliveryEnabled, helpPhone, helpMessage } = req.body || {};
+  const updated = {
+    deliveryEnabled: typeof deliveryEnabled === 'boolean' ? deliveryEnabled : current.deliveryEnabled,
+    helpPhone: typeof helpPhone === 'string' ? helpPhone : current.helpPhone,
+    helpMessage: typeof helpMessage === 'string' ? helpMessage : current.helpMessage,
+  };
+  saveSettings(updated);
+  res.json({ ok: true, settings: updated });
+});
+
 app.get('/', (req, res) => {
-  res.send('Tangra Square bot is running. Open the Telegram bot and tap "Order Now".');
+  res.send('Tangra Square bot is running. Open the Telegram bot and tap "Order Now", or scan the table QR code.');
 });
 
 app.listen(PORT, () => {
