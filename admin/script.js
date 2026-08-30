@@ -321,13 +321,25 @@ async function deleteCategory(categoryId) {
   }
 }
 
+function closeAllModals() {
+  itemModalOverlay.hidden = true;
+  categoryModalOverlay.hidden = true;
+}
+
 function bindMenuAdmin() {
   addItemBtn.addEventListener('click', () => openItemModal(null, null));
   addCategoryBtn.addEventListener('click', () => {
+    closeAllModals();
     categoryNameInput.value = '';
     categoryModalOverlay.hidden = false;
   });
   categoryModalCancel.addEventListener('click', () => { categoryModalOverlay.hidden = true; });
+  categoryModalOverlay.addEventListener('click', (e) => {
+    if (e.target === categoryModalOverlay) categoryModalOverlay.hidden = true;
+  });
+  itemModalOverlay.addEventListener('click', (e) => {
+    if (e.target === itemModalOverlay) itemModalOverlay.hidden = true;
+  });
 
   categoryForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -394,6 +406,7 @@ function bindMenuAdmin() {
 }
 
 function openItemModal(categoryId, item) {
+  closeAllModals();
   itemCategorySelect.innerHTML = currentMenu.categories
     .map((c) => `<option value="${c.id}">${c.name}</option>`)
     .join('');
