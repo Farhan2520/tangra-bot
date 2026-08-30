@@ -7,62 +7,387 @@
     "website": "tangrasquare.com"
   },
   "categories": [
-    { "id": "specials", "name": "Chef's Specials", "priceType": "mixed", "items": [
-      { "id": "sp1", "name": "Crispy Chilly Baby Corn", "half": 120, "full": 200, "dietType": "veg", "available": true },
-      { "id": "sp2", "name": "Kurkure Furfure Fried Momos", "price": 99, "note": "limited time", "dietType": null, "available": true }
-    ]},
-    { "id": "noodles", "name": "Noodles", "priceType": "half_full", "items": [
-      { "id": "n1", "name": "Veg Chowmein", "half": 35, "full": 60, "dietType": "veg", "available": true },
-      { "id": "n2", "name": "Szechuan Chowmein", "half": 50, "full": 80, "dietType": null, "available": true },
-      { "id": "n3", "name": "Egg Chowmein", "half": 45, "full": 70, "dietType": "egg", "available": true },
-      { "id": "n4", "name": "Chicken Chowmein", "half": 50, "full": 80, "dietType": "nonveg", "available": true },
-      { "id": "n5", "name": "Prawn Chowmein", "half": 60, "full": 100, "dietType": "nonveg", "available": true },
-      { "id": "n6", "name": "Egg-Chicken Chowmein", "half": 60, "full": 100, "dietType": "nonveg", "available": true },
-      { "id": "n7", "name": "Mixed Chowmein", "half": 80, "full": 120, "dietType": "nonveg", "available": true }
-    ]},
-    { "id": "gravy_noodles", "name": "Gravy Noodles", "priceType": "half_full", "items": [
-      { "id": "g1", "name": "Veg Chowmein Gravy", "half": 45, "full": 70, "dietType": "veg", "available": true },
-      { "id": "g2", "name": "Egg Chowmein Gravy", "half": 55, "full": 80, "dietType": "egg", "available": true },
-      { "id": "g3", "name": "Chicken Chowmein Gravy", "half": 60, "full": 90, "dietType": "nonveg", "available": true },
-      { "id": "g4", "name": "Prawn Chowmein Gravy", "half": 80, "full": 110, "dietType": "nonveg", "available": true },
-      { "id": "g5", "name": "Egg-Chicken Chowmein Gravy", "half": 70, "full": 110, "dietType": "nonveg", "available": true },
-      { "id": "g6", "name": "Mixed Chowmein Gravy", "half": 90, "full": 130, "dietType": "nonveg", "available": true }
-    ]},
-    { "id": "fried_rice", "name": "Fried Rice", "priceType": "half_full", "items": [
-      { "id": "r1", "name": "Veg Rice", "half": 40, "full": 70, "dietType": "veg", "available": true },
-      { "id": "r2", "name": "Szechuan Rice", "half": 55, "full": 90, "dietType": null, "available": true },
-      { "id": "r3", "name": "Egg Rice", "half": 50, "full": 80, "dietType": "egg", "available": true },
-      { "id": "r4", "name": "Chicken Rice", "half": 55, "full": 90, "dietType": "nonveg", "available": true },
-      { "id": "r5", "name": "Prawn Rice", "half": 65, "full": 110, "dietType": "nonveg", "available": true },
-      { "id": "r6", "name": "Egg-Chicken Rice", "half": 65, "full": 110, "dietType": "nonveg", "available": true },
-      { "id": "r7", "name": "Mixed Rice", "half": 85, "full": 130, "dietType": "nonveg", "available": true }
-    ]},
-    { "id": "chicken_sides", "name": "Chicken Side Dishes", "priceType": "half_full", "note": "4 pc / 8 pc", "items": [
-      { "id": "c1", "name": "Chilli Chicken Dry Gravy", "half": 95, "full": 180, "dietType": "nonveg", "available": true },
-      { "id": "c2", "name": "Sezwan Chicken", "half": 100, "full": 190, "dietType": "nonveg", "available": true },
-      { "id": "c3", "name": "Garlic Chicken", "half": 95, "full": 180, "dietType": "nonveg", "available": true },
-      { "id": "c4", "name": "Lemon Chicken", "half": 100, "full": 190, "dietType": "nonveg", "available": true },
-      { "id": "c5", "name": "Honey Garlic Chicken", "half": 100, "full": 190, "dietType": "nonveg", "available": true },
-      { "id": "c6", "name": "Chicken 65", "half": 110, "full": 200, "dietType": "nonveg", "available": true },
-      { "id": "c7", "name": "Pepper Chicken", "half": 95, "full": 180, "dietType": "nonveg", "available": true },
-      { "id": "c8", "name": "Dragon Chicken", "half": 110, "full": 200, "dietType": "nonveg", "available": true }
-    ]},
-    { "id": "momos", "name": "Momos", "priceType": "single", "note": "5 pcs", "items": [
-      { "id": "m1", "name": "Veg Momo", "price": 45, "dietType": "veg", "available": true },
-      { "id": "m2", "name": "Chicken Momo", "price": 60, "dietType": "nonveg", "available": true },
-      { "id": "m3", "name": "Pan Fried Momo", "price": 90, "dietType": null, "available": true },
-      { "id": "m4", "name": "Crispy Fried Momo", "price": 75, "dietType": null, "available": true },
-      { "id": "m5", "name": "Chicken Cheese Momo", "price": 80, "dietType": "nonveg", "available": true }
-    ]},
-    { "id": "soup", "name": "Soup", "priceType": "single", "items": [
-      { "id": "so1", "name": "Veg Hot n Sour Soup", "price": 35, "dietType": "veg", "available": true },
-      { "id": "so2", "name": "Veg Clear Soup", "price": 30, "dietType": "veg", "available": true },
-      { "id": "so3", "name": "Veg Manchow Soup", "price": 40, "dietType": "veg", "available": true },
-      { "id": "so4", "name": "Chicken Hot n Sour Soup", "price": 55, "dietType": "nonveg", "available": true },
-      { "id": "so5", "name": "Chicken Manchow Soup", "price": 55, "dietType": "nonveg", "available": true },
-      { "id": "so6", "name": "Chicken Clear Soup", "price": 50, "dietType": "nonveg", "available": true },
-      { "id": "so7", "name": "Egg Soup", "price": 40, "dietType": "egg", "available": true },
-      { "id": "so8", "name": "Egg-Chicken Soup", "price": 60, "dietType": "nonveg", "available": true }
-    ]}
+    {
+      "id": "specials",
+      "name": "Chef's Specials",
+      "priceType": "mixed",
+      "items": [
+        {
+          "id": "sp1",
+          "name": "Crispy Chilly Baby Corn",
+          "half": 120,
+          "full": 200,
+          "dietType": "veg",
+          "available": true
+        },
+        {
+          "id": "sp2",
+          "name": "Kurkure Furfure Fried Momos",
+          "price": 99,
+          "note": "limited time",
+          "dietType": null,
+          "available": true
+        }
+      ]
+    },
+    {
+      "id": "noodles",
+      "name": "Noodles",
+      "priceType": "half_full",
+      "items": [
+        {
+          "id": "n1",
+          "name": "Veg Chowmein",
+          "half": 35,
+          "full": 60,
+          "dietType": "veg",
+          "available": true
+        },
+        {
+          "id": "n2",
+          "name": "Szechuan Chowmein",
+          "half": 50,
+          "full": 80,
+          "dietType": null,
+          "available": true
+        },
+        {
+          "id": "n3",
+          "name": "Egg Chowmein",
+          "half": 45,
+          "full": 70,
+          "dietType": "egg",
+          "available": true
+        },
+        {
+          "id": "n4",
+          "name": "Chicken Chowmein",
+          "half": 50,
+          "full": 80,
+          "dietType": "nonveg",
+          "available": true
+        },
+        {
+          "id": "n5",
+          "name": "Prawn Chowmein",
+          "half": 60,
+          "full": 100,
+          "dietType": "nonveg",
+          "available": true
+        },
+        {
+          "id": "n6",
+          "name": "Egg-Chicken Chowmein",
+          "half": 60,
+          "full": 100,
+          "dietType": "nonveg",
+          "available": true
+        },
+        {
+          "id": "n7",
+          "name": "Mixed Chowmein",
+          "half": 80,
+          "full": 120,
+          "dietType": "nonveg",
+          "available": true
+        }
+      ]
+    },
+    {
+      "id": "gravy_noodles",
+      "name": "Gravy Noodles",
+      "priceType": "half_full",
+      "items": [
+        {
+          "id": "g1",
+          "name": "Veg Chowmein Gravy",
+          "half": 45,
+          "full": 70,
+          "dietType": "veg",
+          "available": true
+        },
+        {
+          "id": "g2",
+          "name": "Egg Chowmein Gravy",
+          "half": 55,
+          "full": 80,
+          "dietType": "egg",
+          "available": true
+        },
+        {
+          "id": "g3",
+          "name": "Chicken Chowmein Gravy",
+          "half": 60,
+          "full": 90,
+          "dietType": "nonveg",
+          "available": true
+        },
+        {
+          "id": "g4",
+          "name": "Prawn Chowmein Gravy",
+          "half": 80,
+          "full": 110,
+          "dietType": "nonveg",
+          "available": true
+        },
+        {
+          "id": "g5",
+          "name": "Egg-Chicken Chowmein Gravy",
+          "half": 70,
+          "full": 110,
+          "dietType": "nonveg",
+          "available": true
+        },
+        {
+          "id": "g6",
+          "name": "Mixed Chowmein Gravy",
+          "half": 90,
+          "full": 130,
+          "dietType": "nonveg",
+          "available": true
+        }
+      ]
+    },
+    {
+      "id": "fried_rice",
+      "name": "Fried Rice",
+      "priceType": "half_full",
+      "items": [
+        {
+          "id": "r1",
+          "name": "Veg Rice",
+          "half": 40,
+          "full": 70,
+          "dietType": "veg",
+          "available": true
+        },
+        {
+          "id": "r2",
+          "name": "Szechuan Rice",
+          "half": 55,
+          "full": 90,
+          "dietType": null,
+          "available": true
+        },
+        {
+          "id": "r3",
+          "name": "Egg Rice",
+          "half": 50,
+          "full": 80,
+          "dietType": "egg",
+          "available": true
+        },
+        {
+          "id": "r4",
+          "name": "Chicken Rice",
+          "half": 55,
+          "full": 90,
+          "dietType": "nonveg",
+          "available": true
+        },
+        {
+          "id": "r5",
+          "name": "Prawn Rice",
+          "half": 65,
+          "full": 110,
+          "dietType": "nonveg",
+          "available": true
+        },
+        {
+          "id": "r6",
+          "name": "Egg-Chicken Rice",
+          "half": 65,
+          "full": 110,
+          "dietType": "nonveg",
+          "available": true
+        },
+        {
+          "id": "r7",
+          "name": "Mixed Rice",
+          "half": 85,
+          "full": 130,
+          "dietType": "nonveg",
+          "available": true
+        }
+      ]
+    },
+    {
+      "id": "chicken_sides",
+      "name": "Chicken Side Dishes",
+      "priceType": "half_full",
+      "note": "4 pc / 8 pc",
+      "items": [
+        {
+          "id": "c1",
+          "name": "Chilli Chicken Dry Gravy",
+          "half": 95,
+          "full": 180,
+          "dietType": "nonveg",
+          "available": true
+        },
+        {
+          "id": "c2",
+          "name": "Sezwan Chicken",
+          "half": 100,
+          "full": 190,
+          "dietType": "nonveg",
+          "available": true
+        },
+        {
+          "id": "c3",
+          "name": "Garlic Chicken",
+          "half": 95,
+          "full": 180,
+          "dietType": "nonveg",
+          "available": true
+        },
+        {
+          "id": "c4",
+          "name": "Lemon Chicken",
+          "half": 100,
+          "full": 190,
+          "dietType": "nonveg",
+          "available": true
+        },
+        {
+          "id": "c5",
+          "name": "Honey Garlic Chicken",
+          "half": 100,
+          "full": 190,
+          "dietType": "nonveg",
+          "available": true
+        },
+        {
+          "id": "c6",
+          "name": "Chicken 65",
+          "half": 110,
+          "full": 200,
+          "dietType": "nonveg",
+          "available": true
+        },
+        {
+          "id": "c7",
+          "name": "Pepper Chicken",
+          "half": 95,
+          "full": 180,
+          "dietType": "nonveg",
+          "available": true
+        },
+        {
+          "id": "c8",
+          "name": "Dragon Chicken",
+          "half": 110,
+          "full": 200,
+          "dietType": "nonveg",
+          "available": true
+        }
+      ]
+    },
+    {
+      "id": "momos",
+      "name": "Momos",
+      "priceType": "single",
+      "note": "5 pcs",
+      "items": [
+        {
+          "id": "m1",
+          "name": "Veg Momo",
+          "price": 45,
+          "dietType": "veg",
+          "available": true
+        },
+        {
+          "id": "m2",
+          "name": "Chicken Momo",
+          "price": 60,
+          "dietType": "nonveg",
+          "available": true
+        },
+        {
+          "id": "m3",
+          "name": "Pan Fried Momo",
+          "price": 90,
+          "dietType": null,
+          "available": true
+        },
+        {
+          "id": "m4",
+          "name": "Crispy Fried Momo",
+          "price": 75,
+          "dietType": null,
+          "available": true
+        },
+        {
+          "id": "m5",
+          "name": "Chicken Cheese Momo",
+          "price": 80,
+          "dietType": "nonveg",
+          "available": true
+        }
+      ]
+    },
+    {
+      "id": "soup",
+      "name": "Soup",
+      "priceType": "single",
+      "items": [
+        {
+          "id": "so1",
+          "name": "Veg Hot n Sour Soup",
+          "price": 35,
+          "dietType": "veg",
+          "available": true
+        },
+        {
+          "id": "so2",
+          "name": "Veg Clear Soup",
+          "price": 30,
+          "dietType": "veg",
+          "available": true
+        },
+        {
+          "id": "so3",
+          "name": "Veg Manchow Soup",
+          "price": 40,
+          "dietType": "veg",
+          "available": true
+        },
+        {
+          "id": "so4",
+          "name": "Chicken Hot n Sour Soup",
+          "price": 55,
+          "dietType": "nonveg",
+          "available": true
+        },
+        {
+          "id": "so5",
+          "name": "Chicken Manchow Soup",
+          "price": 55,
+          "dietType": "nonveg",
+          "available": true
+        },
+        {
+          "id": "so6",
+          "name": "Chicken Clear Soup",
+          "price": 50,
+          "dietType": "nonveg",
+          "available": true
+        },
+        {
+          "id": "so7",
+          "name": "Egg Soup",
+          "price": 40,
+          "dietType": "egg",
+          "available": true
+        },
+        {
+          "id": "so8",
+          "name": "Egg-Chicken Soup",
+          "price": 60,
+          "dietType": "nonveg",
+          "available": true
+        }
+      ]
+    }
   ]
 }
