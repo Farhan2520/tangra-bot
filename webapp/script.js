@@ -16,11 +16,16 @@ const SEALS = {
 };
 
 let MENU = null;
+let SETTINGS = { deliveryEnabled: false, helpPhone: '', helpMessage: '' };
 // cart key = `${itemId}__${size||'single'}` -> { id, name, size, unitPrice, qty }
 const cart = {};
 // per-item selected size before adding, key = itemId -> 'half' | 'full'
 const sizeChoice = {};
 let searchQuery = '';
+
+// Customers without Telegram (QR scan) have no chat-based history, so we
+// remember their phone locally to power "My Orders" lookup on this device.
+const LAST_PHONE_KEY = 'tangra_last_phone';
 
 const menuListEl = document.getElementById('menuList');
 const skeletonWrapEl = document.getElementById('skeletonWrap');
@@ -37,14 +42,37 @@ const submitTotalEl = document.getElementById('submitTotal');
 const checkoutForm = document.getElementById('checkoutForm');
 const orderTypeSeg = document.getElementById('orderTypeSeg');
 const custOrderTypeInput = document.getElementById('custOrderType');
-const addressField = document.getElementById('addressField');
+const custPhoneInput = document.getElementById('custPhone');
+const verifiedNoteEl = document.getElementById('verifiedNote');
+const deliverySegBtn = document.getElementById('deliverySegBtn');
+const addressFieldEl = document.getElementById('addressField');
+const custAddressInput = document.getElementById('custAddress');
+
+const myOrdersBtn = document.getElementById('myOrdersBtn');
+const ordersOverlayEl = document.getElementById('ordersOverlay');
+const ordersLookupEl = document.getElementById('ordersLookup');
+const lookupPhoneInput = document.getElementById('lookupPhone');
+const lookupBtn = document.getElementById('lookupBtn');
+const ordersListPanelEl = document.getElementById('ordersList');
+
+const helpBtn = document.getElementById('helpBtn');
+const helpOverlayEl = document.getElementById('helpOverlay');
+const helpMessageTextEl = document.getElementById('helpMessageText');
+const helpCallBtn = document.getElementById('helpCallBtn');
+const helpWhatsappBtn = document.getElementById('helpWhatsappBtn');
+const helpEmptyEl = document.getElementById('helpEmpty');
+
+const webConfirmOverlayEl = document.getElementById('webConfirmOverlay');
+const webConfirmTextEl = document.getElementById('webConfirmText');
+const webConfirmCloseBtn = document.getElementById('webConfirmCloseBtn');
 
 init();
 
 async function init() {
   try {
-    const res = await fetch('/api/menu');
-    MENU = await res.json();
+    const [menuRes, settingsRes] = await Promise.all([fetch('/api/menu'), fetch('/api/settings')]);
+    MENU = await menuRes.json();
+    SETTINGS = await settingsRes.json();
   } catch (err) {
     menuListEl.innerHTML = '<div class="no-results"><span>⚠️</span><p>Menu load nahi ho paya. Refresh karo.</p></div>';
     return;
@@ -56,6 +84,15 @@ async function init() {
   bindCartBar();
   bindDrawer();
   bindForm();
+  bindMyOrders();
+  bindHelp();
+  applyDeliverySetting();
+}
+
+function applyDeliverySetting() {
+  if (SETTINGS.deliveryEnabled) {
+    deliverySegBtn.hidden = false;
+  }
 }
 
 function renderTabs() {
@@ -135,7 +172,7 @@ function dietDotHtml(item) {
 
 function renderItemCard(item) {
   const card = document.createElement('div');
-  card.className = 'item-card';
+  card.className = 'item-card' + (item.available === false ? ' sold-out' : '');
   card.dataset.itemId = item.id;
 
   const hasHalfFull = typeof item.half === 'number' && typeof item.full === 'number';
@@ -150,6 +187,7 @@ function renderItemCard(item) {
       <div class="item-name-row">
         ${dietDotHtml(item)}
         <span class="item-name">${item.name}</span>
+        ${item.available === false ? '<span class="sold-out-badge">Sold Out</span>' : ''}
       </div>
       <div class="item-note">${priceLabel}${item.note ? ' · ' + item.note : ''}</div>
     </div>
@@ -157,6 +195,10 @@ function renderItemCard(item) {
   `;
 
   const controls = card.querySelector('.item-controls');
+
+  if (item.available === false) {
+    return card; // no size/qty controls for sold-out items
+  }
 
   if (hasHalfFull) {
     const sizeToggle = document.createElement('div');
@@ -264,25 +306,24 @@ function bindSearch() {
 }
 
 function bindCartBar() {
-  cartBarEl.addEventListener('click', () => openDrawer());
+  cartBarEl.addEventListener('click', () => openDrawer(drawerOverlayEl));
 }
 
-function openDrawer() {
-  renderCartDrawer();
-  drawerOverlayEl.hidden = false;
-  requestAnimationFrame(() => drawerOverlayEl.classList.add('open'));
+function openDrawer(overlayEl) {
+  overlayEl.hidden = false;
+  requestAnimationFrame(() => overlayEl.classList.add('open'));
 }
 
-function closeDrawer() {
-  drawerOverlayEl.classList.remove('open');
-  setTimeout(() => { drawerOverlayEl.hidden = true; }, 320);
+function closeDrawer(overlayEl) {
+  overlayEl.classList.remove('open');
+  setTimeout(() => { overlayEl.hidden = true; }, 320);
 }
 
 function refreshVisibleCardStates() {
   document.querySelectorAll('.item-card').forEach((card) => {
     const itemId = card.dataset.itemId;
     const item = MENU.categories.flatMap((c) => c.items).find((i) => i.id === itemId);
-    if (!item) return;
+    if (!item || item.available === false) return;
     const controls = card.querySelector('.item-controls');
     refreshQtyControls(item, controls, card);
   });
@@ -320,62 +361,207 @@ function renderCartDrawer() {
   submitTotalEl.textContent = `₹${total}`;
 
   if (entries.length === 0) {
-    closeDrawer();
+    closeDrawer(drawerOverlayEl);
   }
 }
 
 function bindDrawer() {
   drawerOverlayEl.addEventListener('click', (e) => {
-    if (e.target === drawerOverlayEl) closeDrawer();
+    if (e.target === drawerOverlayEl) closeDrawer(drawerOverlayEl);
   });
+  cartBarEl.addEventListener('click', renderCartDrawer);
 
   orderTypeSeg.querySelectorAll('.seg-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       orderTypeSeg.querySelectorAll('.seg-btn').forEach((b) => b.classList.remove('selected'));
       btn.classList.add('selected');
       custOrderTypeInput.value = btn.dataset.value;
-      addressField.style.display = btn.dataset.value === 'Delivery' ? 'flex' : 'none';
+      addressFieldEl.hidden = btn.dataset.value !== 'Delivery';
     });
   });
-  addressField.style.display = 'none';
 
   const tgUser = tg?.initDataUnsafe?.user;
   if (tgUser?.first_name) {
     document.getElementById('custName').value = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ');
   }
+
+  // If this customer already verified their number via the bot, prefill and
+  // lock the phone field so they don't have to type it (and can't fake it).
+  if (tgUser?.id) {
+    fetch(`/api/verified-phone/${tgUser.id}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.phone) {
+          custPhoneInput.value = data.phone;
+          custPhoneInput.readOnly = true;
+          verifiedNoteEl.hidden = false;
+        }
+      })
+      .catch(() => {});
+  } else {
+    // No Telegram — prefill from the last phone number used on this device.
+    const savedPhone = localStorage.getItem(LAST_PHONE_KEY);
+    if (savedPhone) custPhoneInput.value = savedPhone;
+  }
 }
 
 function bindForm() {
-  checkoutForm.addEventListener('submit', (e) => {
+  checkoutForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const entries = Object.values(cart);
     if (entries.length === 0) return;
 
+    const phone = document.getElementById('custPhone').value.trim();
     const customer = {
       name: document.getElementById('custName').value.trim(),
-      phone: document.getElementById('custPhone').value.trim(),
+      phone,
       orderType: custOrderTypeInput.value,
-      address: document.getElementById('custAddress').value.trim(),
+      address: custOrderTypeInput.value === 'Delivery' ? custAddressInput.value.trim() : '',
       notes: document.getElementById('custNotes').value.trim(),
     };
-
-    if (customer.orderType === 'Delivery' && !customer.address) {
-      alert('Delivery ke liye address zaroori hai.');
-      return;
-    }
 
     const payload = {
       cart: entries.map((e) => ({ id: e.id, size: e.size, qty: e.qty })),
       customer,
     };
 
+    localStorage.setItem(LAST_PHONE_KEY, phone);
+
     if (tg && tg.sendData) {
+      // tg.sendData() already closes the Mini App by itself once the data
+      // is delivered — calling tg.close() right after it used to race with
+      // that and could cut the send off before it finished, losing the
+      // order. Let Telegram handle the close on its own.
       tg.sendData(JSON.stringify(payload));
-      tg.close();
     } else {
-      console.log('Order payload:', payload);
-      alert('Order (test mode, Telegram ke bahar): console dekho.');
+      // No Telegram at all (QR scan on plain web) — place the order for
+      // real via the HTTP API instead of just logging it.
+      try {
+        const res = await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Order place nahi ho paya.');
+
+        for (const key of Object.keys(cart)) delete cart[key];
+        updateCartBar();
+        refreshVisibleCardStates();
+        closeDrawer(drawerOverlayEl);
+
+        webConfirmTextEl.textContent = data.summary;
+        openDrawer(webConfirmOverlayEl);
+      } catch (err) {
+        alert(`⚠️ ${err.message}`);
+      }
     }
   });
 }
+
+// --- My Orders ---
+function bindMyOrders() {
+  myOrdersBtn.addEventListener('click', () => {
+    openDrawer(ordersOverlayEl);
+    loadMyOrders();
+  });
+  ordersOverlayEl.addEventListener('click', (e) => {
+    if (e.target === ordersOverlayEl) closeDrawer(ordersOverlayEl);
+  });
+  lookupBtn.addEventListener('click', () => {
+    const phone = lookupPhoneInput.value.trim();
+    if (!phone) return;
+    localStorage.setItem(LAST_PHONE_KEY, phone);
+    fetchMyOrders({ phone });
+  });
+}
+
+function loadMyOrders() {
+  const tgUser = tg?.initDataUnsafe?.user;
+  if (tgUser?.id) {
+    ordersLookupEl.hidden = true;
+    fetchMyOrders({ tgUserId: tgUser.id });
+    return;
+  }
+  // No Telegram — ask for (or reuse) the phone number they ordered with.
+  ordersLookupEl.hidden = false;
+  const savedPhone = localStorage.getItem(LAST_PHONE_KEY);
+  if (savedPhone) {
+    lookupPhoneInput.value = savedPhone;
+    fetchMyOrders({ phone: savedPhone });
+  } else {
+    ordersListPanelEl.innerHTML = '<p class="orders-empty">Phone number daal ke apne orders dekho.</p>';
+  }
+}
+
+async function fetchMyOrders(params) {
+  ordersListPanelEl.innerHTML = '<p class="orders-empty">Loading…</p>';
+  try {
+    const qs = new URLSearchParams(params).toString();
+    const res = await fetch(`/api/my-orders?${qs}`);
+    const orders = await res.json();
+    renderMyOrders(orders);
+  } catch (err) {
+    ordersListPanelEl.innerHTML = '<p class="orders-empty">Orders load nahi ho paye.</p>';
+  }
+}
+
+function renderMyOrders(orders) {
+  if (!orders || orders.length === 0) {
+    ordersListPanelEl.innerHTML = '<p class="orders-empty">Koi order nahi mila.</p>';
+    return;
+  }
+  ordersListPanelEl.innerHTML = '';
+  orders.forEach((order) => {
+    const card = document.createElement('div');
+    card.className = 'my-order-card';
+    const time = new Date(order.createdAt).toLocaleString('en-IN', {
+      day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+    });
+    const itemsText = order.items.map((it) => `${it.name}${it.size ? ` (${it.size})` : ''} × ${it.qty}`).join(', ');
+    card.innerHTML = `
+      <div class="my-order-top">
+        <span>#${order.orderId}</span>
+        <span class="status-badge status-${order.status || 'New'}">${order.status || 'New'}</span>
+      </div>
+      <div class="my-order-items">${itemsText}</div>
+      <div class="my-order-bottom"><span>${time}</span><strong>₹${order.total}</strong></div>
+    `;
+    ordersListPanelEl.appendChild(card);
+  });
+}
+
+// --- Help ---
+function bindHelp() {
+  helpBtn.addEventListener('click', () => {
+    openDrawer(helpOverlayEl);
+    renderHelp();
+  });
+  helpOverlayEl.addEventListener('click', (e) => {
+    if (e.target === helpOverlayEl) closeDrawer(helpOverlayEl);
+  });
+}
+
+function renderHelp() {
+  if (!SETTINGS.helpPhone) {
+    helpMessageTextEl.hidden = true;
+    helpCallBtn.hidden = true;
+    helpWhatsappBtn.hidden = true;
+    helpEmptyEl.hidden = false;
+    return;
+  }
+  helpEmptyEl.hidden = true;
+  helpMessageTextEl.hidden = false;
+  helpMessageTextEl.textContent = SETTINGS.helpMessage || '';
+  helpCallBtn.hidden = false;
+  helpCallBtn.href = `tel:${SETTINGS.helpPhone}`;
+  helpWhatsappBtn.hidden = false;
+  const digitsOnly = SETTINGS.helpPhone.replace(/\D/g, '');
+  helpWhatsappBtn.href = `https://wa.me/91${digitsOnly.slice(-10)}`;
+}
+
+webConfirmCloseBtn.addEventListener('click', () => closeDrawer(webConfirmOverlayEl));
+webConfirmOverlayEl.addEventListener('click', (e) => {
+  if (e.target === webConfirmOverlayEl) closeDrawer(webConfirmOverlayEl);
+});
