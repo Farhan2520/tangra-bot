@@ -15,29 +15,143 @@
   <button id="refreshBtn" class="refresh-btn">↻ Refresh</button>
 </header>
 
-<section class="summary" id="summary">
-  <div class="summary-card">
-    <span class="summary-label">Today's Orders</span>
-    <span class="summary-value" id="todayCount">0</span>
+<nav class="main-tabs" id="mainTabs">
+  <button class="main-tab active" data-page="orders">Orders</button>
+  <button class="main-tab" data-page="menu">Menu</button>
+  <button class="main-tab" data-page="settings">Settings</button>
+</nav>
+
+<!-- ORDERS PAGE -->
+<section id="page-orders" class="page">
+  <section class="summary" id="summary">
+    <div class="summary-card">
+      <span class="summary-label">Today's Orders</span>
+      <span class="summary-value" id="todayCount">0</span>
+    </div>
+    <div class="summary-card">
+      <span class="summary-label">Today's Revenue</span>
+      <span class="summary-value" id="todayRevenue">₹0</span>
+    </div>
+  </section>
+
+  <nav class="filter-tabs" id="filterTabs">
+    <button class="filter-tab active" data-status="All">All</button>
+    <button class="filter-tab" data-status="New">New</button>
+    <button class="filter-tab" data-status="Preparing">Preparing</button>
+    <button class="filter-tab" data-status="Ready">Ready</button>
+    <button class="filter-tab" data-status="Delivered">Delivered</button>
+    <button class="filter-tab" data-status="Cancelled">Cancelled</button>
+  </nav>
+
+  <main id="ordersList" class="orders-list">
+    <div class="loading">Orders load ho rahe hain…</div>
+  </main>
+</section>
+
+<!-- MENU PAGE -->
+<section id="page-menu" class="page" hidden>
+  <div class="menu-toolbar">
+    <button id="addCategoryBtn" class="secondary-btn">+ Naya Category</button>
+    <button id="addItemBtn" class="primary-btn">+ Naya Item</button>
   </div>
-  <div class="summary-card">
-    <span class="summary-label">Today's Revenue</span>
-    <span class="summary-value" id="todayRevenue">₹0</span>
+  <main id="menuAdminList" class="menu-admin-list">
+    <div class="loading">Menu load ho raha hai…</div>
+  </main>
+</section>
+
+<!-- SETTINGS PAGE -->
+<section id="page-settings" class="page" hidden>
+  <div class="settings-card">
+    <div class="settings-row">
+      <div>
+        <label class="settings-label">Home Delivery</label>
+        <p class="settings-hint">On karne par customers ko "Delivery" option aur address field dikhega.</p>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="deliveryToggle" />
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <div class="settings-row settings-row-col">
+      <label class="settings-label">Help / Contact Number</label>
+      <p class="settings-hint">Yeh number customers ko "Help" button mein dikhega (Call + WhatsApp).</p>
+      <input type="tel" id="helpPhoneInput" placeholder="10-digit number" class="settings-input" />
+    </div>
+
+    <div class="settings-row settings-row-col">
+      <label class="settings-label">Help Message</label>
+      <input type="text" id="helpMessageInput" placeholder="e.g. Order ya query ke liye call karo" class="settings-input" />
+    </div>
+
+    <button id="saveSettingsBtn" class="primary-btn full-width">Save Settings</button>
+    <p class="settings-saved" id="settingsSaved" hidden>✅ Save ho gaya</p>
   </div>
 </section>
 
-<nav class="filter-tabs" id="filterTabs">
-  <button class="filter-tab active" data-status="All">All</button>
-  <button class="filter-tab" data-status="New">New</button>
-  <button class="filter-tab" data-status="Preparing">Preparing</button>
-  <button class="filter-tab" data-status="Ready">Ready</button>
-  <button class="filter-tab" data-status="Delivered">Delivered</button>
-  <button class="filter-tab" data-status="Cancelled">Cancelled</button>
-</nav>
+<!-- Item add/edit modal -->
+<div class="modal-overlay" id="itemModalOverlay" hidden>
+  <div class="modal">
+    <h2 id="itemModalTitle">Naya Item</h2>
+    <form id="itemForm">
+      <label>Category
+        <select id="itemCategorySelect" required></select>
+      </label>
+      <label>Item Name
+        <input type="text" id="itemNameInput" required />
+      </label>
+      <label class="pricing-mode-row">
+        <span>Pricing</span>
+        <div class="segmented" id="pricingModeSeg">
+          <button type="button" class="seg-btn selected" data-mode="single">Single Price</button>
+          <button type="button" class="seg-btn" data-mode="half_full">Half / Full</button>
+        </div>
+      </label>
+      <label id="singlePriceField">Price (₹)
+        <input type="number" id="itemPriceInput" min="0" />
+      </label>
+      <div id="halfFullFields" hidden>
+        <label>Half (₹)
+          <input type="number" id="itemHalfInput" min="0" />
+        </label>
+        <label>Full (₹)
+          <input type="number" id="itemFullInput" min="0" />
+        </label>
+      </div>
+      <label>Diet Type
+        <select id="itemDietSelect">
+          <option value="">— None —</option>
+          <option value="veg">Veg</option>
+          <option value="egg">Egg</option>
+          <option value="nonveg">Non-Veg</option>
+        </select>
+      </label>
+      <label>Note (optional)
+        <input type="text" id="itemNoteInput" placeholder="e.g. limited time" />
+      </label>
+      <div class="modal-actions">
+        <button type="button" id="itemModalCancel" class="secondary-btn">Cancel</button>
+        <button type="submit" class="primary-btn">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
 
-<main id="ordersList" class="orders-list">
-  <div class="loading">Orders load ho rahe hain…</div>
-</main>
+<!-- Category add modal -->
+<div class="modal-overlay" id="categoryModalOverlay" hidden>
+  <div class="modal">
+    <h2>Naya Category</h2>
+    <form id="categoryForm">
+      <label>Category Name
+        <input type="text" id="categoryNameInput" required placeholder="e.g. Starters" />
+      </label>
+      <div class="modal-actions">
+        <button type="button" id="categoryModalCancel" class="secondary-btn">Cancel</button>
+        <button type="submit" class="primary-btn">Add</button>
+      </div>
+    </form>
+  </div>
+</div>
 
 <script src="script.js"></script>
 </body>
