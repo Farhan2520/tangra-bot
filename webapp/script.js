@@ -428,34 +428,45 @@ function bindForm() {
 
     localStorage.setItem(LAST_PHONE_KEY, phone);
 
-    if (tg && tg.sendData) {
-      // tg.sendData() already closes the Mini App by itself once the data
-      // is delivered — calling tg.close() right after it used to race with
-      // that and could cut the send off before it finished, losing the
-      // order. Let Telegram handle the close on its own.
-      tg.sendData(JSON.stringify(payload));
-    } else {
-      // No Telegram at all (QR scan on plain web) — place the order for
-      // real via the HTTP API instead of just logging it.
-      try {
-        const res = await fetch('/api/orders', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Order place nahi ho paya.');
+    // IMPORTANT: Submit through our HTTP API for both Telegram and normal web.
+    // Telegram's tg.sendData() only works reliably for Web Apps launched from
+    // supported keyboard-button flows. If the customer opens the app from the
+    // BotFather Menu Button, sendData() can appear to work but never reaches
+    // the bot. The API works for both launch methods.
+    try {
+      const tgUser = tg?.initDataUnsafe?.user;
+      const apiPayload = {
+        ...payload,
+        source: tgUser?.id ? 'telegram' : 'web',
+        telegramUserId: tgUser?.id || null,
+        telegramUsername: tgUser?.username || null,
+      };
 
-        for (const key of Object.keys(cart)) delete cart[key];
-        updateCartBar();
-        refreshVisibleCardStates();
-        closeDrawer(drawerOverlayEl);
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(apiPayload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Order place nahi ho paya.');
 
-        webConfirmTextEl.textContent = data.summary;
-        openDrawer(webConfirmOverlayEl);
-      } catch (err) {
-        alert(`⚠️ ${err.message}`);
+      for (const key of Object.keys(cart)) delete cart[key];
+      updateCartBar();
+      refreshVisibleCardStates();
+      closeDrawer(drawerOverlayEl);
+
+      webConfirmTextEl.textContent = data.summary;
+      openDrawer(webConfirmOverlayEl);
+
+      // Close the Telegram Mini App after the server confirms the order.
+      // For plain web this simply does nothing.
+      if (tg?.close) {
+        setTimeout(() => {
+          try { tg.close(); } catch (e) {}
+        }, 1200);
       }
+    } catch (err) {
+      alert(`⚠️ ${err.message}`);
     }
   });
 }
